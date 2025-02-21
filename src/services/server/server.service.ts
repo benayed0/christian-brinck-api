@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { UpdateVideoDto } from 'src/dto/update-video.dto';
 import { aws_s3_utils } from 'src/utils/aws-s3-utils';
 import { PostVideoScoresDto } from 'src/dto/post-video-scores.dto';
@@ -16,7 +16,7 @@ import {
   StopInstancesCommand,
 } from '@aws-sdk/client-ec2';
 @Injectable()
-export class ServerService {
+export class ServerService implements OnApplicationShutdown {
   constructor(
     @InjectModel(Audio.name) private VideoModel: Model<Audio>,
     private dashboardSerice: DashboardService,
@@ -25,6 +25,11 @@ export class ServerService {
   ) {}
   server_id = 'i-0c6f69f90e779e456';
   ec2 = new EC2Client({ region: 'eu-north-1' });
+  private taskPromise: Promise<{
+    success: boolean;
+    state?: string;
+    error?: string;
+  }> | null = null;
 
   async generateUniqueId() {
     const audio_ids = (await this.dashboardSerice.findAll()).map(
@@ -45,7 +50,7 @@ export class ServerService {
 
     const { PreSignedUrl } = await aws_s3_utils.get_upload_audio_url(audio_id);
     const author_id = new Types.ObjectId(user_id);
-    await this.start_instance();
+    this.taskPromise = this.start_instance();
     await this.VideoModel.create({
       audio_id,
       original_name,
@@ -147,47 +152,45 @@ export class ServerService {
     error?: string;
   }> {
     try {
-      const { state } = await this.get_instance_state();
-      if (state !== 'running' && state !== 'stopped') {
-        return {
-          success: false,
-          state,
-          error: `instance state : (${state}) not ready for starting.`,
-        };
-      } else {
-        try {
-          if (state === 'stopped') {
-            const command = new StartInstancesCommand({
-              InstanceIds: [this.server_id],
-            });
-            await this.ec2.send(command);
-          }
-          const startTime = Date.now();
-          let status;
+      // Get the initial state
+      let { state } = await this.get_instance_state();
 
-          do {
-            const instanceState = await this.get_instance_state();
-            status = instanceState.state;
+      // If it's already running, we're done.
+      if (state === 'running') {
+        return { success: true, state };
+      }
 
-            console.log('after starting command, state:', status);
-
-            if (status === 'running') break;
-
-            await new Promise((r) => setTimeout(r, 10000));
-          } while (Date.now() - startTime < 30000);
-          return { success: status === 'running', state: status };
-        } catch (error) {
-          console.log(error);
-          if (error) return { success: false };
+      // If the instance is in a transitional state (e.g., stopping, pending, etc.)
+      // wait until it reaches a state that allows starting (either 'stopped' or 'running').
+      while (state !== 'stopped') {
+        console.log(
+          `Waiting for instance to be ready for starting, current state: ${state}`,
+        );
+        await new Promise((r) => setTimeout(r, 10000));
+        state = (await this.get_instance_state()).state;
+        // If it becomes running while waiting, return immediately.
+        if (state === 'running') {
+          return { success: true, state };
         }
       }
-    } catch (error) {
-      console.log('error', error);
 
-      if (error) return { success: false, error };
+      // If the instance is stopped, issue the start command.
+      if (state === 'stopped') {
+        console.log(
+          `Instance is currently stopped. Proceeding to start the instance, current state: ${state}`,
+        );
+        const command = new StartInstancesCommand({
+          InstanceIds: [this.server_id],
+        });
+        await this.ec2.send(command);
+      }
+
+      return { success: true, state: state };
+    } catch (error) {
+      console.error('Error in start_instance:', error);
+      return { success: false, error: error?.message || String(error) };
     }
   }
-
   async stop_instance(): Promise<{
     success: boolean;
     state?: string;
@@ -213,6 +216,15 @@ export class ServerService {
       }
     } catch (error) {
       if (error) return { success: false, error: error };
+    }
+  }
+  async onApplicationShutdown(signal?: string) {
+    console.log(signal);
+
+    if (this.taskPromise) {
+      console.log('still starting instance not complete');
+      const r = await this.taskPromise;
+      console.log('starting instance completed', r);
     }
   }
 }
