@@ -18,6 +18,10 @@ import { ExcelService } from './services/excel/excel.service';
 import { IpSetService } from './services/ip-set/ip-set.service';
 import { IpSetController } from './controllers/ip-set/ip-set.controller';
 import { Ip, IpSchema } from './schemas/ip.schema';
+import { DocxService } from './services/docx/docx.service';
+import { DriveController } from './controllers/drive/drive.controller';
+import { DriveService } from './services/drive/drive.service';
+import { S3Service } from './services/s3/s3.service';
 
 @Module({
   controllers: [
@@ -26,6 +30,7 @@ import { Ip, IpSchema } from './schemas/ip.schema';
     DashboardController,
     UserController,
     IpSetController,
+    DriveController,
   ],
   providers: [
     ServerService,
@@ -36,6 +41,9 @@ import { Ip, IpSchema } from './schemas/ip.schema';
     AudioService,
     ExcelService,
     IpSetService,
+    DocxService,
+    DriveService,
+    S3Service,
   ],
   exports: [UserService, AudioService],
   imports: [

@@ -21,6 +21,8 @@ export class Audio {
   @Prop({ default: 'uploaded' })
   state: string;
 
+  @Prop({ type: String })
+  errors: string;
   @Prop({ default: false })
   audio_uploaded: boolean;
   @Prop()

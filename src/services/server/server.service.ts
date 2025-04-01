@@ -1,6 +1,5 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { UpdateVideoDto } from 'src/dto/update-video.dto';
-import { aws_s3_utils } from 'src/utils/aws-s3-utils';
 import { PostVideoScoresDto } from 'src/dto/post-video-scores.dto';
 import { randomUUID } from 'crypto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -15,6 +14,7 @@ import {
   StartInstancesCommand,
   StopInstancesCommand,
 } from '@aws-sdk/client-ec2';
+import { S3Service } from '../s3/s3.service';
 @Injectable()
 export class ServerService implements OnApplicationShutdown {
   constructor(
@@ -22,6 +22,7 @@ export class ServerService implements OnApplicationShutdown {
     private dashboardSerice: DashboardService,
     private userservice: UserService,
     private mailservice: MailService,
+    private s3service: S3Service,
   ) {}
   server_id = 'i-0c6f69f90e779e456';
   ec2 = new EC2Client({ region: 'eu-north-1' });
@@ -48,7 +49,8 @@ export class ServerService implements OnApplicationShutdown {
   ) {
     const audio_id = await this.generateUniqueId();
 
-    const { PreSignedUrl } = await aws_s3_utils.get_upload_audio_url(audio_id);
+    const { PreSignedUrl } =
+      await this.s3service.get_upload_audio_url(audio_id);
     const author_id = new Types.ObjectId(user_id);
     this.taskPromise = this.start_instance();
     await this.VideoModel.create({
@@ -90,7 +92,7 @@ export class ServerService implements OnApplicationShutdown {
     if (find_id === null) {
       return { error: 'not found in db' };
     } else {
-      const url = await aws_s3_utils.get_audio(audio_id);
+      const url = await this.s3service.get_audio(audio_id);
       return { url };
     }
   }
@@ -101,7 +103,7 @@ export class ServerService implements OnApplicationShutdown {
       const { audio_id, state } = updateHcDto;
       if (state === 'finished') {
         const finishedAt = new Date();
-        const scores = await aws_s3_utils.get_scores(audio_id);
+        const scores = await this.s3service.get_scores(audio_id);
         const { author_id, original_name } = await this.VideoModel.findOne({
           audio_id,
         });
@@ -111,7 +113,7 @@ export class ServerService implements OnApplicationShutdown {
           original_name,
         );
         await this.VideoModel.updateOne({ audio_id }, { scores, finishedAt });
-        await aws_s3_utils.delete_scores(audio_id);
+        await this.s3service.delete_scores(audio_id);
       }
       await this.VideoModel.updateOne({ audio_id }, { ...updateHcDto });
       return `This action updates #${audio_id}`;
@@ -121,7 +123,8 @@ export class ServerService implements OnApplicationShutdown {
   }
 
   async getScoresUploadUrl(audio_id: string) {
-    const { PreSignedUrl } = await aws_s3_utils.get_upload_scores_url(audio_id);
+    const { PreSignedUrl } =
+      await this.s3service.get_upload_scores_url(audio_id);
     return { PreSignedUrl };
   }
   async add_hcs_scores(audio_id: string, hcs_score: PostVideoScoresDto) {

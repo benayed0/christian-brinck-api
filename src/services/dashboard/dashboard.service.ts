@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { aws_s3_utils } from 'src/utils/aws-s3-utils';
 import { UserService } from '../user/user.service';
 import { Audio } from '../../schemas/audio.schema';
+import { S3Service } from '../s3/s3.service';
 @Injectable()
 export class DashboardService {
   constructor(
     @InjectModel(Audio.name) private AudioModel: Model<Audio>,
     private userService: UserService,
+    private s3Service: S3Service,
   ) {}
 
   async findAllByUserInProgress(user_id: string, audio_ids: string[]) {
@@ -53,7 +54,7 @@ export class DashboardService {
   }
   async deleteOne(audio_id: string) {
     const audio = await this.AudioModel.findOne({ audio_id: audio_id });
-    await aws_s3_utils.delete_audio(audio_id);
+    await this.s3Service.delete_audio(audio_id);
     if (audio) {
       const final = await audio.deleteOne();
       return final;

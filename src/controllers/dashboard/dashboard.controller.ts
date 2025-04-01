@@ -3,8 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpException,
-  HttpStatus,
   Param,
   Post,
   Request,
@@ -17,7 +15,8 @@ import { DashboardService } from 'src/services/dashboard/dashboard.service';
 import { ServerService } from 'src/services/server/server.service';
 import { AudioService } from 'src/services/audio/audio.service';
 import { ExcelService } from 'src/services/excel/excel.service';
-import { UserService } from 'src/services/user/user.service';
+import { DocxService } from 'src/services/docx/docx.service';
+import { Response } from 'express';
 
 @Controller('dashboard')
 @UseGuards(AuthGuard)
@@ -27,7 +26,7 @@ export class DashboardController {
     private audioService: AudioService,
     private serverService: ServerService,
     private excelservice: ExcelService,
-    private userService: UserService,
+    private docxService: DocxService,
   ) {}
   @Get('get_video_upload_url/:original_name/:model_name')
   async get_video_upload_url(
@@ -83,6 +82,24 @@ export class DashboardController {
   @Get('transcript_url/:audio_id')
   async GetTranscriptUrl(@Param('audio_id') audio_id: string) {
     return await this.audioService.getTranscriptUrl(audio_id);
+  }
+  @Get('transcript_docx/:audio_id')
+  async GetTranscriptDocx(
+    @Param('audio_id') audio_id: string,
+    @Res() res: Response,
+  ) {
+    const { transcription, title } =
+      await this.audioService.getTranscription(audio_id);
+    const buffer = await this.docxService.createDoc(title, transcription);
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename=${title}.docx`,
+      'Content-Length': buffer.length,
+    });
+
+    res.send(buffer);
   }
   @Delete('scores/:audio')
   async deleteOne(@Param('audio') audio: string) {

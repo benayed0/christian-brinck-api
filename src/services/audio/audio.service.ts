@@ -1,16 +1,17 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { aws_s3_utils } from 'src/utils/aws-s3-utils';
 import { Audio } from 'src/schemas/audio.schema';
 import { UserService } from '../user/user.service';
 import { Scores } from 'src/interfaces/scores';
+import { S3Service } from '../s3/s3.service';
 
 @Injectable()
 export class AudioService {
   constructor(
     @InjectModel(Audio.name) private AudioModel: Model<Audio>,
     @Inject(forwardRef(() => UserService)) private userService: UserService,
+    private s3service: S3Service,
   ) {}
 
   async getAudiosToProcess(state: string) {
@@ -18,7 +19,9 @@ export class AudioService {
 
     return Promise.all(
       audios.map(async (audio) => {
-        const download_audio_url = await aws_s3_utils.get_audio(audio.audio_id);
+        const download_audio_url = await this.s3service.get_audio(
+          audio.audio_id,
+        );
 
         // Ensure the audio is really uploaded before processing
         if (!download_audio_url) {
@@ -29,11 +32,11 @@ export class AudioService {
           ...audio.toObject(),
           download_audio_url,
           upload_transcription_url:
-            await aws_s3_utils.get_upload_transcription_url(audio.audio_id),
-          download_transcription_url: await aws_s3_utils.get_transcription(
+            await this.s3service.get_upload_transcription_url(audio.audio_id),
+          download_transcription_url: await this.s3service.get_transcription(
             audio.audio_id,
           ),
-          upload_result_url: await aws_s3_utils.get_upload_result_url(
+          upload_result_url: await this.s3service.get_upload_result_url(
             audio.audio_id,
           ),
         };
@@ -43,7 +46,7 @@ export class AudioService {
   async getAudioInfo(audio_id: string) {
     const audio = await this.AudioModel.findOne({ audio_id });
 
-    const download_audio_url = await aws_s3_utils.get_audio(audio.audio_id);
+    const download_audio_url = await this.s3service.get_audio(audio.audio_id);
 
     // Ensure the audio is really uploaded before processing
     if (!download_audio_url) {
@@ -53,13 +56,12 @@ export class AudioService {
     return {
       ...audio.toObject(),
       download_audio_url,
-      upload_transcription_url: await aws_s3_utils.get_upload_transcription_url(
+      upload_transcription_url:
+        await this.s3service.get_upload_transcription_url(audio.audio_id),
+      download_transcription_url: await this.s3service.get_transcription(
         audio.audio_id,
       ),
-      download_transcription_url: await aws_s3_utils.get_transcription(
-        audio.audio_id,
-      ),
-      upload_result_url: await aws_s3_utils.get_upload_result_url(
+      upload_result_url: await this.s3service.get_upload_result_url(
         audio.audio_id,
       ),
     };
@@ -67,7 +69,7 @@ export class AudioService {
   async getAudioUrl(audio_id: string) {
     const find_id = await this.AudioModel.findOne({ audio_id });
     if (find_id !== null) {
-      const url = await aws_s3_utils.get_audio(audio_id);
+      const url = await this.s3service.get_audio(audio_id);
       return { url };
     } else {
       return { error: 'not found in db' };
@@ -76,8 +78,19 @@ export class AudioService {
   async getTranscriptUrl(audio_id: string) {
     const find_id = await this.AudioModel.findOne({ audio_id });
     if (find_id !== null) {
-      const url = await aws_s3_utils.get_transcription(audio_id);
+      const url = await this.s3service.get_transcription(audio_id);
       return { url };
+    } else {
+      return { error: 'not found in db' };
+    }
+  }
+  async getTranscription(audio_id: string) {
+    const find_id = await this.AudioModel.findOne({ audio_id });
+    if (find_id !== null) {
+      const url = await this.s3service.get_transcription(audio_id);
+      const response = await fetch(url);
+      const transcription = await response.json();
+      return { transcription, title: find_id.original_name.split('.')[0] };
     } else {
       return { error: 'not found in db' };
     }
@@ -85,7 +98,7 @@ export class AudioService {
   async getResultUrl(audio_id: string) {
     const find_id = await this.AudioModel.findOne({ audio_id });
     if (find_id !== null) {
-      const url = await aws_s3_utils.get_result(audio_id);
+      const url = await this.s3service.get_result(audio_id);
       return { url };
     } else {
       return { error: 'not found in db' };
@@ -119,7 +132,7 @@ export class AudioService {
         author_email: (
           await this.userService.findById(audio.author_id.toString())
         ).email,
-        results: await aws_s3_utils.get_result(audio.audio_id),
+        results: await this.s3service.get_result(audio.audio_id),
       })),
     );
     // const size = Buffer.byteLength(JSON.stringify(videos));
