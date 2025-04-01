@@ -73,6 +73,15 @@ export class AudioService {
       return { error: 'not found in db' };
     }
   }
+  async getTranscriptUrl(audio_id: string) {
+    const find_id = await this.AudioModel.findOne({ audio_id });
+    if (find_id !== null) {
+      const url = await aws_s3_utils.get_transcription(audio_id);
+      return { url };
+    } else {
+      return { error: 'not found in db' };
+    }
+  }
   async getResultUrl(audio_id: string) {
     const find_id = await this.AudioModel.findOne({ audio_id });
     if (find_id !== null) {

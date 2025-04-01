@@ -80,6 +80,10 @@ export class DashboardController {
   async GetResultUrl(@Param('audio_id') audio_id: string) {
     return await this.audioService.getResultUrl(audio_id);
   }
+  @Get('transcript_url/:audio_id')
+  async GetTranscriptUrl(@Param('audio_id') audio_id: string) {
+    return await this.audioService.getTranscriptUrl(audio_id);
+  }
   @Delete('scores/:audio')
   async deleteOne(@Param('audio') audio: string) {
     return await this.dahsboardService.deleteOne(audio);
