@@ -123,7 +123,6 @@ export class S3Service {
     try {
       // Generate the pre-signed URL for a 5-minute expiration
       const response = await this.client.send(command);
-      console.log(response);
 
       return response;
     } catch (error) {
@@ -152,7 +151,6 @@ export class S3Service {
       await this.client.send(TranscriptionCommand);
       await this.client.send(ResultCommand);
       const response = await this.client.send(VideoCommand);
-      console.log(response);
 
       return response;
     } catch (error) {
@@ -176,7 +174,7 @@ export class S3Service {
       if (error.name === 'NotFound') {
         return null; // File does not exist
       }
-      console.log(error); // Rethrow any unexpected errors
+      console.error(error); // Rethrow any unexpected errors
       return null;
     }
   };
@@ -197,11 +195,17 @@ export class S3Service {
       Prefix: key,
     });
     const listResponse = await this.client.send(command);
-    const result: { id: string; name: string; createdAt: string }[] = [];
+    const result: {
+      id: string;
+      name: string;
+      createdAt: string;
+      size: number;
+    }[] = [];
     if (!listResponse.Contents) return [];
 
     for (const item of listResponse.Contents) {
       const key = item.Key!;
+      const size = item.Size!;
       try {
         const headCommand = new HeadObjectCommand({
           Bucket: this.Bucket,
@@ -218,7 +222,7 @@ export class S3Service {
         const createdAt =
           head.Metadata?.createdat || head.LastModified?.toISOString();
         if (name !== '') {
-          result.push({ id, name, createdAt });
+          result.push({ id, name, createdAt, size });
         }
       } catch (err) {
         console.error(`Failed to get metadata for ${key}:`, err);
@@ -264,7 +268,6 @@ export class S3Service {
       });
 
       await this.client.send(deleteCommand);
-      console.log(`Deleted: ${item.Key}`);
     }
   }
   async getFile(id: string) {
@@ -296,5 +299,31 @@ export class S3Service {
       expiresIn: 3600,
     });
     return url;
+  }
+  async getBucketSize(): Promise<number> {
+    let totalSize = 0;
+    let continuationToken: string | undefined = undefined;
+
+    do {
+      const command = new ListObjectsV2Command({
+        Bucket: this.Bucket,
+        Prefix: 'drive_files/',
+        ContinuationToken: continuationToken,
+      });
+
+      const response = await this.client.send(command);
+
+      if (response.Contents) {
+        for (const item of response.Contents) {
+          totalSize += item.Size ?? 0;
+        }
+      }
+
+      continuationToken = response.IsTruncated
+        ? response.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+
+    return totalSize; // in bytes
   }
 }
