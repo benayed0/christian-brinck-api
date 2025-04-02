@@ -284,11 +284,12 @@ export class S3Service {
 
     // Step 2: Use the first file (or customize if you expect multiple files)
     const fileKey = listResponse.Contents[0].Key!;
-
+    const fileName = fileKey.split('/').pop()!;
     // Step 3: Generate a signed download URL
     const getCommand = new GetObjectCommand({
       Bucket: this.Bucket,
       Key: fileKey,
+      ResponseContentDisposition: `attachment; filename="${fileName}"`,
     });
 
     const url = await getSignedUrl(this.client, getCommand, {
