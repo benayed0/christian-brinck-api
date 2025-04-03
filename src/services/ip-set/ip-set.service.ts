@@ -34,10 +34,8 @@ export class IpSetService {
    */
   async getRegisteredIps(): Promise<Ip[]> {
     try {
-      const { Addresses } = await this.getIps();
-      const ips = await this.Ip.find({
-        ip: { $in: Addresses },
-      });
+      // const { Addresses } = await this.getIps();
+      const ips = await this.Ip.find();
       return ips.map(({ ip, name }) => ({ ip: ip.split('/')[0], name }));
     } catch (error) {
       console.error('Error retrieving IP set:', error);
