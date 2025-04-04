@@ -24,8 +24,8 @@ export class ServerService implements OnApplicationShutdown {
     private mailservice: MailService,
     private s3service: S3Service,
   ) {}
-  server_id = 'i-0c6f69f90e779e456';
-  ec2 = new EC2Client({ region: 'eu-north-1' });
+  server_id = 'i-0db27c0951291515c';
+  ec2 = new EC2Client({ region: 'us-east-1' });
   private taskPromise: Promise<{
     success: boolean;
     state?: string;
