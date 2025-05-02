@@ -22,6 +22,9 @@ import { DocxService } from './services/docx/docx.service';
 import { DriveController } from './controllers/drive/drive.controller';
 import { DriveService } from './services/drive/drive.service';
 import { S3Service } from './services/s3/s3.service';
+import { AnonymizeService } from './services/anonymize/anonymize.service';
+import { HttpModule } from '@nestjs/axios';
+import { AnonymizeController } from './controllers/anonymize/anonymize.controller';
 
 @Module({
   controllers: [
@@ -31,6 +34,7 @@ import { S3Service } from './services/s3/s3.service';
     UserController,
     IpSetController,
     DriveController,
+    AnonymizeController,
   ],
   providers: [
     ServerService,
@@ -44,9 +48,11 @@ import { S3Service } from './services/s3/s3.service';
     DocxService,
     DriveService,
     S3Service,
+    AnonymizeService,
   ],
   exports: [UserService, AudioService],
   imports: [
+    HttpModule,
     ConfigModule.forRoot(),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
