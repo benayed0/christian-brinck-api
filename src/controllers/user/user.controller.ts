@@ -31,9 +31,13 @@ export class UserController {
   @UseGuards(AuthGuard)
   @Get('is_admin')
   async is_admin(@Request() req: { user: { id: string } }) {
-    const { is_admin } = await this.userService.findById(req.user.id);
+    if (req.user.id) {
+      const { is_admin } = await this.userService.findById(req.user.id);
 
-    return { is_admin };
+      return { is_admin };
+    } else {
+      return { is_admin: false };
+    }
   }
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
