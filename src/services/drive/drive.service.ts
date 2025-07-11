@@ -8,12 +8,14 @@ export class DriveService {
   getAll() {
     return this.s3Service.get_files();
   }
-  async addOne(name: string) {
+  async addOne(name: string, id?: string) {
     try {
-      const ids = (await this.getAll()).map(({ id }) => id);
-      let id = randomUUID();
-      while (ids.includes(id)) {
-        id = randomUUID();
+      if (!id) {
+        const ids = (await this.getAll()).map(({ id }) => id);
+        let id = randomUUID();
+        while (ids.includes(id)) {
+          id = randomUUID();
+        }
       }
       const preSignedUrl = await this.s3Service.getFileUploadUrl(id, name);
       return { id, preSignedUrl };

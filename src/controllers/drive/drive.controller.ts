@@ -21,7 +21,7 @@ export class DriveController {
   }
   @Get(':id')
   async getOne(@Param('id') id: string) {
-    const url = await this.driveService.getOne(id);
+    const { url } = await this.driveService.getOne(id);
     return { url };
   }
   @Get('')

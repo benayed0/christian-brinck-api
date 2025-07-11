@@ -282,7 +282,7 @@ export class S3Service {
     const listResponse = await this.client.send(listCommand);
 
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      return null; // no files found for this id
+      return undefined; // no files found for this id
     }
 
     // Step 2: Use the first file (or customize if you expect multiple files)
@@ -298,7 +298,7 @@ export class S3Service {
     const url = await getSignedUrl(this.client, getCommand, {
       expiresIn: 3600,
     });
-    return url;
+    return { url, fileName };
   }
   async getBucketSize(): Promise<number> {
     let totalSize = 0;
