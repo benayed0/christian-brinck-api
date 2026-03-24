@@ -300,6 +300,51 @@ export class S3Service {
     });
     return { url, fileName };
   }
+  async putWeightingFile(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    const command = new PutObjectCommand({
+      Bucket: this.Bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+    await this.client.send(command);
+  }
+
+  async getWeightingPresignedDownload(
+    key: string,
+    expiresIn: number,
+  ): Promise<string> {
+    const command = new GetObjectCommand({ Bucket: this.Bucket, Key: key });
+    return getSignedUrl(this.client, command, { expiresIn });
+  }
+
+  async getWeightingPresignedUpload(
+    key: string,
+    expiresIn: number,
+  ): Promise<string> {
+    const command = new PutObjectCommand({ Bucket: this.Bucket, Key: key });
+    return getSignedUrl(this.client, command, { expiresIn });
+  }
+
+  async deleteWeightingJob(jobId: string): Promise<void> {
+    const prefix = `weighting_files/${jobId}/`;
+    const listCommand = new ListObjectsV2Command({
+      Bucket: this.Bucket,
+      Prefix: prefix,
+    });
+    const listResponse = await this.client.send(listCommand);
+    if (!listResponse.Contents || listResponse.Contents.length === 0) return;
+    for (const item of listResponse.Contents) {
+      await this.client.send(
+        new DeleteObjectCommand({ Bucket: this.Bucket, Key: item.Key! }),
+      );
+    }
+  }
+
   async getBucketSize(): Promise<number> {
     let totalSize = 0;
     let continuationToken: string | undefined = undefined;

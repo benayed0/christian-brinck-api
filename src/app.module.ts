@@ -25,6 +25,11 @@ import { S3Service } from './services/s3/s3.service';
 import { AnonymizeService } from './services/anonymize/anonymize.service';
 import { HttpModule } from '@nestjs/axios';
 import { AnonymizeController } from './controllers/anonymize/anonymize.controller';
+import { WeightingJob, WeightingJobSchema } from './schemas/weighting-job.schema';
+import { WeightingService } from './services/weighting/weighting.service';
+import { WeightingController } from './controllers/weighting/weighting.controller';
+import { WeightingWorkerController } from './controllers/weighting/weighting-worker.controller';
+import { ServerGuard } from './guards/server/server.guard';
 
 @Module({
   controllers: [
@@ -35,6 +40,8 @@ import { AnonymizeController } from './controllers/anonymize/anonymize.controlle
     IpSetController,
     DriveController,
     AnonymizeController,
+    WeightingController,
+    WeightingWorkerController,
   ],
   providers: [
     ServerService,
@@ -49,6 +56,8 @@ import { AnonymizeController } from './controllers/anonymize/anonymize.controlle
     DriveService,
     S3Service,
     AnonymizeService,
+    WeightingService,
+    ServerGuard,
   ],
   exports: [UserService, AudioService],
   imports: [
@@ -74,6 +83,7 @@ import { AnonymizeController } from './controllers/anonymize/anonymize.controlle
       { name: Audio.name, schema: AudioSchema },
       { name: Users.name, schema: UsersSchema },
       { name: Ip.name, schema: IpSchema },
+      { name: WeightingJob.name, schema: WeightingJobSchema },
     ]),
   ],
 })
