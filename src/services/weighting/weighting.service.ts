@@ -34,24 +34,15 @@ export class WeightingService {
     dto: CreateTrainingJobDto,
     authorId: string,
     questionnaireBuffer: Buffer,
-    individualTrainingBuffer: Buffer,
   ): Promise<{ job_id: string }> {
     const job_id = randomUUID();
     const questionnaireKey = `weighting_files/${job_id}/inputs/questionnaire.json`;
-    const individualTrainingKey = `weighting_files/${job_id}/inputs/individual_training.json`;
 
-    await Promise.all([
-      this.s3Service.putWeightingFile(
-        questionnaireKey,
-        questionnaireBuffer,
-        'application/json',
-      ),
-      this.s3Service.putWeightingFile(
-        individualTrainingKey,
-        individualTrainingBuffer,
-        'application/json',
-      ),
-    ]);
+    await this.s3Service.putWeightingFile(
+      questionnaireKey,
+      questionnaireBuffer,
+      'application/json',
+    );
 
     await this.weightingJobModel.create({
       job_id,
@@ -63,7 +54,6 @@ export class WeightingService {
       model: dto.model,
       output_model: dto.output_model,
       s3_questionnaire_key: questionnaireKey,
-      s3_individual_training_key: individualTrainingKey,
     });
 
     this.dispatchWebhook(job_id);
@@ -161,13 +151,6 @@ export class WeightingService {
         3600,
       );
     }
-    if (job.s3_individual_training_key) {
-      urls['individual_training.json'] =
-        await this.s3Service.getWeightingPresignedDownload(
-          job.s3_individual_training_key,
-          3600,
-        );
-    }
     if (job.s3_final_weight_key) {
       urls['final_weight.json'] = await this.s3Service.getWeightingPresignedDownload(
         job.s3_final_weight_key,
@@ -230,13 +213,6 @@ export class WeightingService {
         job.s3_questionnaire_key,
         7200,
       );
-    }
-    if (job.s3_individual_training_key) {
-      input_urls['individual_training'] =
-        await this.s3Service.getWeightingPresignedDownload(
-          job.s3_individual_training_key,
-          7200,
-        );
     }
     if (job.s3_final_weight_key) {
       input_urls['final_weight'] = await this.s3Service.getWeightingPresignedDownload(
@@ -338,6 +314,19 @@ export class WeightingService {
         job_id,
       );
     }
+  }
+
+  async retryJob(job_id: string, authorId: string): Promise<{ job_id: string }> {
+    const job = await this.getJobById(job_id, authorId);
+
+    await this.weightingJobModel.updateOne(
+      { job_id },
+      { state: 'pending', error_message: null, finishedAt: null },
+    );
+
+    this.dispatchWebhook(job_id);
+
+    return { job_id };
   }
 
   private dispatchWebhook(job_id: string): void {

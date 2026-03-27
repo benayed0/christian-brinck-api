@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   BadRequestException,
+  Put,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from 'src/guards/auth/auth.guard';
@@ -34,7 +35,6 @@ export class WeightingController {
   @UseInterceptors(
     FileFieldsInterceptor([
       { name: 'questionnaire', maxCount: 1 },
-      { name: 'individual_training', maxCount: 1 },
     ]),
   )
   async startTraining(
@@ -42,15 +42,11 @@ export class WeightingController {
     @UploadedFiles()
     files: {
       questionnaire?: UploadedFile[];
-      individual_training?: UploadedFile[];
     },
     @Request() req: { user: { id: string } },
   ) {
     if (!files?.questionnaire?.[0]) {
       throw new BadRequestException('questionnaire file is required');
-    }
-    if (!files?.individual_training?.[0]) {
-      throw new BadRequestException('individual_training file is required');
     }
 
     const dto: CreateTrainingJobDto = {
@@ -64,7 +60,6 @@ export class WeightingController {
       dto,
       req.user.id,
       files.questionnaire[0].buffer,
-      files.individual_training[0].buffer,
     );
   }
 
@@ -130,6 +125,14 @@ export class WeightingController {
     @Request() req: { user: { id: string } },
   ) {
     return this.weightingService.getOutputUrls(job_id, req.user.id);
+  }
+
+  @Post('jobs/:job_id/retry')
+  async retryJob(
+    @Param('job_id') job_id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.weightingService.retryJob(job_id, req.user.id);
   }
 
   @Delete('jobs/:job_id')

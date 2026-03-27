@@ -46,9 +46,6 @@ export class WeightingJob {
   s3_questionnaire_key: string;
 
   @Prop()
-  s3_individual_training_key: string;
-
-  @Prop()
   s3_final_weight_key: string;
 
   // --- S3 keys — outputs ---
