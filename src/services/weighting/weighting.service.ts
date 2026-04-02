@@ -174,6 +174,12 @@ export class WeightingService {
         3600,
       );
     }
+    if (job.s3_output_individual_results_key) {
+      urls['Individual_Results.txt'] = await this.s3Service.getWeightingPresignedDownload(
+        job.s3_output_individual_results_key,
+        3600,
+      );
+    }
     if (job.s3_output_results_xlsx_key) {
       urls['training_individual_results.xlsx'] =
         await this.s3Service.getWeightingPresignedDownload(
@@ -241,6 +247,12 @@ export class WeightingService {
         key,
         3600,
       );
+      const individualResultsKey = `weighting_files/${job_id}/outputs/Individual_Results.txt`;
+      urls['individual_results_key'] = individualResultsKey;
+      urls['individual_results_url'] = await this.s3Service.getWeightingPresignedUpload(
+        individualResultsKey,
+        3600,
+      );
     } else {
       const xlsxKey = `weighting_files/${job_id}/outputs/training_individual_results.xlsx`;
       const pdfKey = `weighting_files/${job_id}/outputs/figures_report.pdf`;
@@ -270,6 +282,9 @@ export class WeightingService {
 
     if (dto.output_keys.final_weight_key) {
       update.s3_output_final_weight_key = dto.output_keys.final_weight_key;
+    }
+    if (dto.output_keys.individual_results_key) {
+      update.s3_output_individual_results_key = dto.output_keys.individual_results_key;
     }
     if (dto.output_keys.results_xlsx_key) {
       update.s3_output_results_xlsx_key = dto.output_keys.results_xlsx_key;

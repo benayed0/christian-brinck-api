@@ -53,6 +53,9 @@ export class WeightingJob {
   s3_output_final_weight_key: string;
 
   @Prop()
+  s3_output_individual_results_key: string;
+
+  @Prop()
   s3_output_results_xlsx_key: string;
 
   @Prop()
