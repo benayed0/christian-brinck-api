@@ -121,8 +121,11 @@ export class WeightingService {
   }
 
   async getJobsByUser(authorId: string): Promise<WeightingJobDocument[]> {
+    const user = await this.userService.findById(authorId);
     return this.weightingJobModel
-      .find({ author_id: new Types.ObjectId(authorId) })
+      .find({
+        ...(user.is_admin ? {} : { author_id: new Types.ObjectId(authorId) }),
+      })
       .sort({ createdAt: -1 });
   }
 
@@ -130,9 +133,10 @@ export class WeightingService {
     job_id: string,
     authorId: string,
   ): Promise<WeightingJobDocument> {
+    const user = await this.userService.findById(authorId);
     const job = await this.weightingJobModel.findOne({
       job_id,
-      author_id: new Types.ObjectId(authorId),
+      ...(user.is_admin ? {} : { author_id: new Types.ObjectId(authorId) }),
     });
     if (!job) throw new NotFoundException('Job not found');
     return job;
